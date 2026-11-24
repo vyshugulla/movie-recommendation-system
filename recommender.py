@@ -60,18 +60,46 @@ def standardize_ratings_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_movies(df: pd.DataFrame) -> tuple[bool, str]:
-    """Check movies DataFrame has required columns. Return (ok, message)."""
+    """Validate required movie fields and basic data quality."""
     missing = REQUIRED_MOVIES_COLS - set(df.columns)
     if missing:
-        return False, f"movies.csv missing columns: {sorted(missing)}. Required: {REQUIRED_MOVIES_COLS}"
+        return False, f"movies.csv missing required columns: {sorted(missing)}"
+
+    if df[list(REQUIRED_MOVIES_COLS)].isnull().any().any():
+        return False, "movies.csv contains empty values in movieId, title, or genres."
+
+    if not pd.to_numeric(df["movieId"], errors="coerce").notna().all():
+        return False, "movieId must contain numeric values."
+
+    if df["movieId"].duplicated().any():
+        return False, "movies.csv contains duplicate movieId values."
+
+    if df["title"].astype(str).str.strip().eq("").any():
+        return False, "Movie titles cannot be empty."
+
     return True, "OK"
 
 
 def validate_ratings(df: pd.DataFrame) -> tuple[bool, str]:
-    """Check ratings DataFrame has required columns. Return (ok, message)."""
+    """Validate required rating fields and basic data quality."""
     missing = REQUIRED_RATINGS_COLS - set(df.columns)
     if missing:
-        return False, f"ratings.csv missing columns: {sorted(missing)}. Required: {REQUIRED_RATINGS_COLS}"
+        return False, f"ratings.csv missing required columns: {sorted(missing)}"
+
+    if df[list(REQUIRED_RATINGS_COLS)].isnull().any().any():
+        return False, "ratings.csv contains empty values in userId, movieId, or rating."
+
+    for col in ("userId", "movieId", "rating"):
+        if not pd.to_numeric(df[col], errors="coerce").notna().all():
+            return False, f"{col} must contain numeric values."
+
+    if df.duplicated(subset=["userId", "movieId"]).any():
+        return False, "ratings.csv contains duplicate userId/movieId pairs."
+
+    rating_values = pd.to_numeric(df["rating"], errors="coerce")
+    if not rating_values.between(0.5, 5.0).all():
+        return False, "Ratings must be between 0.5 and 5.0."
+
     return True, "OK"
 
 
