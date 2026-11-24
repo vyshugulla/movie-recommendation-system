@@ -287,46 +287,45 @@ def main():
                         st.dataframe(result_table, use_container_width=True, hide_index=True)
 
         # --- Evaluation: collaborative filtering only ---
-if mode == "Collaborative (User-kNN)":
-    st.sidebar.header("Collaborative Filtering Evaluation")
-    st.sidebar.caption(
-        "These metrics evaluate User-kNN only, not Content-Based Filtering."
-    )
+        if mode == "Collaborative (User-kNN)":
+            st.sidebar.header("Collaborative Filtering Evaluation")
+            st.sidebar.caption(
+                "These metrics evaluate User-kNN only, not Content-Based Filtering."
+            )
 
-    train_fraction = st.sidebar.slider(
-        "Train fraction (rest = test)",
-        min_value=0.5,
-        max_value=0.95,
-        value=0.8,
-        step=0.05,
-    )
-    test_frac = 1.0 - train_fraction
+            train_fraction = st.sidebar.slider(
+                "Train fraction (rest = test)",
+                min_value=0.5,
+                max_value=0.95,
+                value=0.8,
+                step=0.05,
+            )
+            test_frac = 1.0 - train_fraction
 
-    rank_k = st.sidebar.slider(
-        "K for ranking metrics",
-        min_value=1,
-        max_value=20,
-        value=10,
-    )
+            rank_k = st.sidebar.slider(
+                "K for ranking metrics",
+                min_value=1,
+                max_value=20,
+                value=10,
+            )
 
-    max_eval_neighbors = max(1, ratings["userId"].nunique() - 1)
-    default_eval_neighbors = min(15, max_eval_neighbors)
+            max_eval_neighbors = max(1, ratings["userId"].nunique() - 1)
+            default_eval_neighbors = min(15, max_eval_neighbors)
 
-    k_neighbors_eval = st.sidebar.slider(
-        "K neighbors for evaluation",
-        min_value=1,
-        max_value=max_eval_neighbors,
-        value=default_eval_neighbors,
-        key="eval_k",
-    )
+            k_neighbors_eval = st.sidebar.slider(
+                "K neighbors for evaluation",
+                min_value=1,
+                max_value=max_eval_neighbors,
+                value=default_eval_neighbors,
+                key="eval_k",
+            )
 
-    if st.sidebar.button("Run Collaborative Evaluation"):
-        train_r, test_r = train_test_split_ratings(ratings, test_frac)
-        eval_metrics = evaluate_collaborative(
-            train_r, test_r, movies, k_neighbors_eval, rank_k
-        )
-        st.session_state["last_eval"] = eval_metricss
-
+            if st.sidebar.button("Run Collaborative Evaluation"):
+                train_r, test_r = train_test_split_ratings(ratings, test_frac)
+                eval_metrics = evaluate_collaborative(
+                    train_r, test_r, movies, k_neighbors_eval, rank_k
+                )
+                st.session_state["last_eval"] = eval_metrics
     # Show last evaluation metrics if available
     if "last_eval" in st.session_state:
         m = st.session_state["last_eval"]
