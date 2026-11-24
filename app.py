@@ -252,7 +252,16 @@ def main():
                 index=0,
             )
             top_n = st.slider("Top N", min_value=5, max_value=20, value=10, key="col_topn")
-            k = st.slider("k neighbors", min_value=5, max_value=50, value=15, key="col_k")
+            max_neighbors = max(1, len(user_ids_sorted) - 1) 
+            default_neighbors = min(15, max_neighbors)  
+            k = st.slider(     
+                "k neighbors",     
+                min_value=1,     
+                max_value=max_neighbors,     
+                value=default_neighbors,     
+                key="col_k",     
+                help="The maximum adjusts to the number of users in the loaded dataset.", 
+            )
             if st.button("Recommend For User"):
                 collab = get_collaborative_model(ratings)
                 if collab is None:
@@ -277,28 +286,54 @@ def main():
                     else:
                         st.dataframe(result_table, use_container_width=True, hide_index=True)
 
-        # --- Evaluation (both modes; collaborative is primary) ---
-        st.sidebar.header("Evaluation")
-        test_frac = 1.0 - st.sidebar.slider(
-            "Train fraction (rest = test)",
-            min_value=0.5,
-            max_value=0.95,
-            value=0.8,
-            step=0.05,
+        # --- Evaluation: collaborative filtering only ---
+if mode == "Collaborative (User-kNN)":
+    st.sidebar.header("Collaborative Filtering Evaluation")
+    st.sidebar.caption(
+        "These metrics evaluate User-kNN only, not Content-Based Filtering."
+    )
+
+    train_fraction = st.sidebar.slider(
+        "Train fraction (rest = test)",
+        min_value=0.5,
+        max_value=0.95,
+        value=0.8,
+        step=0.05,
+    )
+    test_frac = 1.0 - train_fraction
+
+    rank_k = st.sidebar.slider(
+        "K for ranking metrics",
+        min_value=1,
+        max_value=20,
+        value=10,
+    )
+
+    max_eval_neighbors = max(1, ratings["userId"].nunique() - 1)
+    default_eval_neighbors = min(15, max_eval_neighbors)
+
+    k_neighbors_eval = st.sidebar.slider(
+        "K neighbors for evaluation",
+        min_value=1,
+        max_value=max_eval_neighbors,
+        value=default_eval_neighbors,
+        key="eval_k",
+    )
+
+    if st.sidebar.button("Run Collaborative Evaluation"):
+        train_r, test_r = train_test_split_ratings(ratings, test_frac)
+        eval_metrics = evaluate_collaborative(
+            train_r, test_r, movies, k_neighbors_eval, rank_k
         )
-        rank_k = st.sidebar.slider("K for ranking metrics", min_value=5, max_value=20, value=10)
-        k_neighbors_eval = st.sidebar.slider("k neighbors (evaluation)", min_value=5, max_value=50, value=15, key="eval_k")
-        if st.sidebar.button("Run Evaluation"):
-            train_r, test_r = train_test_split_ratings(ratings, test_frac)
-            eval_metrics = evaluate_collaborative(
-                train_r, test_r, movies, k_neighbors_eval, rank_k
-            )
-            st.session_state["last_eval"] = eval_metrics
+        st.session_state["last_eval"] = eval_metricss
 
     # Show last evaluation metrics if available
     if "last_eval" in st.session_state:
         m = st.session_state["last_eval"]
-        st.subheader("Evaluation Results")
+        st.subheader("Collaborative Filtering Evaluation Results") 
+        st.caption(     
+            "RMSE, Precision@K and Recall@K are calculated for the User-kNN collaborative filtering method." 
+        )
         c1, c2, c3 = st.columns(3)
         with c1:
             st.metric("RMSE", f"{m['rmse']:.4f}" if not pd.isna(m["rmse"]) else "N/A")
